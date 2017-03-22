@@ -211,10 +211,10 @@ int Socket(int domain, int type, int protocol) {
 	return rc;
 }
 
-void Setsocketopt(int s, int level, int optname, const void *optval, int optlen) {
+void Setsockopt(int s, int level, int optname, const void *optval, int optlen) {
 	int rc;
 	
-	if ((rc = setsocketopt(s, level, optname, optval, optlen)) < 0)
+	if ((rc = setsockopt(s, level, optname, optval, optlen)) < 0)
 		unix_error("Setsocketopt error");
 }
 void Bind(int sockfd, struct sockaddr *my_addr, int addrlen) {

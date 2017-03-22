@@ -13,8 +13,10 @@
 #include <arpa/inet.h>
 #include <errno.h>
 
-
+/* Misc constants */
+#define MAXLINE 8192	/* Max text line length */
 #define LISTENQ 1024	/* Second argument to listen() */
+
 /* Persistent state for the robust I/O (Rio) package */
 #define RIO_BUFSIZE 8192
 typedef struct {
