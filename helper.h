@@ -14,7 +14,7 @@
 #include <errno.h>
 
 
-#define LISTENQ 1024
+#define LISTENQ 1024	/* Second argument to listen() */
 /* Persistent state for the robust I/O (Rio) package */
 #define RIO_BUFSIZE 8192
 typedef struct {
@@ -23,6 +23,14 @@ typedef struct {
 	char *rio_bufptr;			/* Next unread byte in internal buf */
 	char rio_buf[RIO_BUFSIZE]; /* Internal buffer */
 } rio_t;
+
+/* External variables */
+extern int h_errno;	 			/* Defined by BIND for DNS errors */
+
+/* Error handling functions */
+void unix_error(char *msg);
+void app_error(char *msg);
+void dns_error(char *msg);
 
 /* Rio (Robust I/O) package */
 ssize_t rio_readn(int fd, void *usrbuf, size_t n);
@@ -46,4 +54,9 @@ int open_listenfd(int portno);
 int Open_clientfd(char *hostname, int port);
 int Open_listenfd(int port);
 
+/* Wrappers for Unix I/O routines */
+void CLose(int fd);
+
+/* DNS interface wrappers */
+struct hostent *Gethostbyaddr(const char *addr, int len, int type);
 #endif 

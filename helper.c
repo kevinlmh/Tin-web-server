@@ -18,6 +18,11 @@ void app_error(char *msg) { /* aPPLication error */
 	exit(0);
 }
 
+void dns_error(char *msg) { /* DNS-style error */
+	fprintf(stderr, "%s: DNS error %d\n", msg, h_errno);
+	exit(0);
+}
+
 /**********************************************************
  * The Robust I/O package
  **********************************************************/
@@ -235,7 +240,7 @@ void Connect(int sockfd, struct sockaddr *serv_addr, int addrlen) {
 }
 
 /***************************************************************
- * client server hlper routines
+ * client server helper routines
  ***************************************************************/
 int open_listenfd(int port) {
 	int listenfd, optval = 1;
@@ -272,4 +277,27 @@ int Open_listenfd(int port) {
 	if ((rc = open_listenfd(port)) < 0)
 		unix_error("Open_listenfd error");
 	return rc;
+}
+
+
+/**********************************************************************
+ * Wrappers for Unix I/O routines
+ **********************************************************************/
+void Close(int fd) {
+	int rc;
+
+	if ((rc = close(fd)) < 0)
+		unix_error("Close error");
+}
+
+
+/**********************************************************************
+ * DNS interface wrappers
+ **********************************************************************/
+struct hostent *Gethostbyaddr(const char *addr, int len, int type) {
+	struct hostent *p;
+
+	if ((p = gethostbyaddr(addr, len, type)) == NULL)
+		dns_error("Gethostbyaddr error");
+	return p;
 }
