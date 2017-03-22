@@ -242,6 +242,39 @@ void Connect(int sockfd, struct sockaddr *serv_addr, int addrlen) {
 /***************************************************************
  * client server helper routines
  ***************************************************************/
+/*
+ * open_clientfd - open connection to server at <hostname, port>
+ *   and return a socket descriptor ready for reading and writing.
+ *   Returns -1 and sets errno on Unix error.
+ *   Returns -2 and sets h_errno on DNS (gethostbyname) error.
+ */
+int open_clientfd(char *hostname, int port) {
+	int clientfd;
+	struct hostent *hp;
+	struct sockaddr_in serveraddr;
+
+	if ((clientfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+		return -1;	/* Check errno for cause of error */
+
+	/* Fill in the server's IP address and port */
+	if ((hp = gethostbyname(hostname)) == NULL)
+		return -2;	/* Check h_errno for cause of error */
+	bzero(&serveraddr, sizeof(serveraddr));
+	serveraddr.sin_family = AF_INET;
+	bcopy(hp->h_addr_list[0], &serveraddr.sin_addr.s_addr, hp->h_length);
+	serveraddr.sin_port = htons(port);
+
+	/* Establish a connection with the server */
+	if (connect(clientfd, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0)
+		return -1;
+
+	return clientfd;
+}
+
+/*
+ * Open_listenfd - open and return a listening socket on port
+ *   Returns -1 and sets errno on Unix error.
+ */
 int open_listenfd(int port) {
 	int listenfd, optval = 1;
 	struct sockaddr_in serveraddr;
@@ -271,6 +304,17 @@ int open_listenfd(int port) {
 /********************************************************************
  * Wrapper for the client/server helper routines
  ********************************************************************/
+int Open_clientfd(char *hostname, int port) {
+	int rc;
+
+	if ((rc = open_clientfd(hostname, port)) < 0) {
+		if (rc == -1)
+			unix_error("Open_clientfd Unix error");
+		else
+			dns_error("Open_clientfd DNS error");
+	}
+	return rc;
+}
 int Open_listenfd(int port) {
 	int rc;
 
@@ -278,7 +322,6 @@ int Open_listenfd(int port) {
 		unix_error("Open_listenfd error");
 	return rc;
 }
-
 
 /**********************************************************************
  * Wrappers for Unix I/O routines
@@ -300,4 +343,20 @@ struct hostent *Gethostbyaddr(const char *addr, int len, int type) {
 	if ((p = gethostbyaddr(addr, len, type)) == NULL)
 		dns_error("Gethostbyaddr error");
 	return p;
+}
+
+/**********************************************************************
+ * Wrappers for Standard I/O functions
+ **********************************************************************/
+char* Fgets(char *ptr, int n, FILE *stream) {
+	char *rptr;
+	if (((rptr = fgets(ptr, n, stream)) == NULL) && ferror(stream))
+		app_error("Fgets error");
+
+	return rptr;
+}
+
+void Fputs(const char *ptr, FILE *stream) {
+	if (fputs(ptr, stream) == EOF)
+		unix_error("Fputs error");
 }

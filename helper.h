@@ -61,4 +61,8 @@ void CLose(int fd);
 
 /* DNS interface wrappers */
 struct hostent *Gethostbyaddr(const char *addr, int len, int type);
+
+/* Wrappers for Standard I/O functions */
+char* Fgets(char *ptr, int n, FILE *stream);
+void Fputs(const char *ptr, FILE *stream);
 #endif 
