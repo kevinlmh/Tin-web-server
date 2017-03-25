@@ -4,8 +4,7 @@
 *.obj
 *.elf
 
-# Precompiled Headers
-*.gch
+# Precompiled Headers *.gch
 *.pch
 
 # Libraries
@@ -31,3 +30,6 @@
 # Debug files
 *.dSYM/
 *.su
+
+# vim swp files
+*.swp
