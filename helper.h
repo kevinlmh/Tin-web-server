@@ -12,6 +12,8 @@
 #include <netinet/ip.h>
 #include <arpa/inet.h>
 #include <errno.h>
+#include <sys/mman.h>
+
 
 /* Misc constants */
 #define MAXLINE 8192	/* Max text line length */
@@ -57,7 +59,9 @@ int Open_clientfd(char *hostname, int port);
 int Open_listenfd(int port);
 
 /* Wrappers for Unix I/O routines */
-void CLose(int fd);
+int Open(const char *pathname, int flags, mode_t mode);
+void Close(int fd);
+int Dup2(int fd1, int fd2);
 
 /* DNS interface wrappers */
 struct hostent *Gethostbyaddr(const char *addr, int len, int type);
@@ -66,3 +70,12 @@ struct hostent *Gethostbyaddr(const char *addr, int len, int type);
 char* Fgets(char *ptr, int n, FILE *stream);
 void Fputs(const char *ptr, FILE *stream);
 #endif 
+
+/* Wrappers for memory mapping functions */
+void *Mmap(void *addr, size_t len, int prot, int flags, int fd, off_t offset);
+void Munmap(void *start, size_t length);
+
+/* Wrappers for Unix process control functions */
+pid_t Fork(void);
+pid_t Wait(int *status);
+void Execve(const char *filename, char *const argv[], char *const envp[]);
