@@ -13,9 +13,13 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <pthread.h>
-#include "helper.h"
 
-#define MAXBUF 8192		/* Max I/O buffer size */
+#include "helper.h"
+#include "threadpool.h"
+
+#define MAXBUF 8192			/* Max I/O buffer size */
+#define NUM_THREADS 512		/* Number of threads in thread pool */
+#define JOBQUEUE_SIZE 1024	/* Size of job queue */
 
 /* External variables */
 extern char **environ;		/* Defined by libc */
@@ -26,7 +30,7 @@ struct pkg {
 	char *filename;
 };
 
-void doit(int fd);
+void handle_request(threadpool_t *thpool, int fd);
 void read_requesthdrs(rio_t *rp);
 int parse_uri(char *uri, char *filename, char *cgiargs);
 void *serve_static(void *pkg);
@@ -45,20 +49,23 @@ int main(int argc, char **argv) {
 	}
 	port = atoi(argv[1]);
 
+	/* create a thread pool */
+	threadpool_t *thpool = threadpool_create(NUM_THREADS, JOBQUEUE_SIZE);
+
 	listenfd = Open_listenfd(port);
 	while (1) {
 		clientlen = sizeof(clientaddr);
 		connfd = Accept(listenfd, (struct sockaddr *)&clientaddr, &clientlen);
-		doit(connfd);
+		handle_request(thpool, connfd);
 	}
 
 	return 0;
 }
 
 /*
- * doit - handle one HTTP request/response transaction
+ * handle_request - handle one HTTP request/response transaction
  */
-void doit(int fd) {
+void handle_request(threadpool_t *thpool, int fd) {
 	int is_static;
 	struct stat sbuf;
 	char buf[MAXLINE], method[MAXLINE], uri[MAXLINE], version[MAXLINE];
@@ -87,16 +94,14 @@ void doit(int fd) {
 			clienterror(fd, filename, "403", "Forbidden", "Tiny couln't read the file");
 			return;
 		}
-		/* Create a detached thread to handle static content request */
+	
+		/* add job to thread pool */
 		struct pkg p = { fd, sbuf.st_size, filename };
-		pthread_attr_t attr;
-		pthread_t thread;
-
-		pthread_attr_init(&attr);
-		pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-		pthread_create(&thread, &attr, &serve_static, &p);
-		pthread_attr_destroy(&attr);
-
+		// pthread_attr_t attr;
+		// pthread_attr_init(&attr);
+		// pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+		// pthread_attr_destroy(&attr);
+		threadpool_add_work(thpool, serve_static, &p);
 	} else { /* Server dynamic content */
 		if (!(S_ISREG(sbuf.st_mode)) || !(S_IXUSR & sbuf.st_mode)) {
 			clienterror(fd, filename, "403", "Forbidden", "Tiny couldn't run the CGI program");
@@ -151,7 +156,7 @@ int parse_uri(char *uri, char *filename, char *cgiargs) {
 
 	if (!strstr(uri, "cgi-bin")) { /* Static content */
 		strcpy(cgiargs, "");
-		strcpy(filename, ".");
+		strcpy(filename, "./site/");
 		strcat(filename, uri);
 		if (uri[strlen(uri)-1] == '/')
 			strcat(filename, "index.html");
