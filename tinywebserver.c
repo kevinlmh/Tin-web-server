@@ -12,6 +12,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <pthread.h>
 #include "helper.h"
 
 #define MAXBUF 8192		/* Max I/O buffer size */
@@ -19,10 +20,16 @@
 /* External variables */
 extern char **environ;		/* Defined by libc */
 
+struct pkg {
+	int fd;
+	int filesize;
+	char *filename;
+};
+
 void doit(int fd);
 void read_requesthdrs(rio_t *rp);
 int parse_uri(char *uri, char *filename, char *cgiargs);
-void serve_static(int fd, char *fiulename, int filesize);
+void *serve_static(void *pkg);
 void get_filetype(char *filename, char *filetype);
 void serve_dynamic(int fd, char *filename, char *cgiargs);
 void clienterror(int fd, char *cause, char *errnum, char *shortmsg, char *longmsm);
@@ -43,12 +50,14 @@ int main(int argc, char **argv) {
 		clientlen = sizeof(clientaddr);
 		connfd = Accept(listenfd, (struct sockaddr *)&clientaddr, &clientlen);
 		doit(connfd);
-		Close(connfd);
 	}
 
 	return 0;
 }
 
+/*
+ * doit - handle one HTTP request/response transaction
+ */
 void doit(int fd) {
 	int is_static;
 	struct stat sbuf;
@@ -78,13 +87,23 @@ void doit(int fd) {
 			clienterror(fd, filename, "403", "Forbidden", "Tiny couln't read the file");
 			return;
 		}
-		serve_static(fd, filename, sbuf.st_size);
+		/* Create a detached thread to handle static content request */
+		struct pkg p = { fd, sbuf.st_size, filename };
+		pthread_attr_t attr;
+		pthread_t thread;
+
+		pthread_attr_init(&attr);
+		pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+		pthread_create(&thread, &attr, &serve_static, &p);
+		pthread_attr_destroy(&attr);
+
 	} else { /* Server dynamic content */
 		if (!(S_ISREG(sbuf.st_mode)) || !(S_IXUSR & sbuf.st_mode)) {
 			clienterror(fd, filename, "403", "Forbidden", "Tiny couldn't run the CGI program");
 			return;
 		}
 		serve_dynamic(fd, filename, cgiargs);
+		Close(fd);
 	}
 }
 
@@ -151,7 +170,14 @@ int parse_uri(char *uri, char *filename, char *cgiargs) {
 	}
 }
 
-void serve_static(int fd, char *filename, int filesize) {
+/*
+ * serve_static - copy a file back to the client
+ */
+void *serve_static(void *pkg) {
+	struct pkg *args = (struct pkg *)pkg;
+	int fd = args->fd;
+	char *filename = args->filename;
+	int filesize = args->filesize;
 	int srcfd;
 	char *srcp, filetype[MAXLINE], buf[MAXBUF];
 
