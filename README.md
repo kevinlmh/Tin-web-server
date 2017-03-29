@@ -1,6 +1,6 @@
-[![Build Status](https://travis-ci.org/kevinlmh/tinywebserver.svg?branch=master)](https://travis-ci.org/kevinlmh/tinywebserver)
+[![Build Status](https://travis-ci.org/kevinlmh/Tin-web-server.svg?branch=master)](https://travis-ci.org/kevinlmh/Tin-web-server)
 
-# A tiny web server written in C with some goals in mind.
+# A lightweight web server written in C with some goals in mind.
 * Fast and responsive
 * Ability to handle large number of concurrent requests
 * Support Python frameworks well
@@ -11,13 +11,13 @@ make
 ```
 or
 ```
-gcc tinywebserver.c -o tiny -pthread
+gcc tin.c -o tin -pthread
 ```
 
 ## Usage
 Put index.html (default homepage), other pages and resources under the same directory. Then run:
 ```
-./tiny [port]
+./tin [port]
 ```
 You will see requests coming in.
 
@@ -26,7 +26,7 @@ Put your CGI binary under cgi-bin directory and access it using
 ```
 http://[your domain/ip address]:[port]/cgi-bin/[program]?[parameter1]&[parameter2]&[...]
 ```
-For example, to run the adder cgi program that comes with tiny, go to:
+For example, to run the adder cgi program that comes with Tin, go to:
 ```
 http://[your domain/ip address]:[port]/cgi-bin/adder?1+2
 ```
