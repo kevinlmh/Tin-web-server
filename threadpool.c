@@ -24,6 +24,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <signal.h>
 
 #include "threadpool.h"
 
@@ -35,12 +36,16 @@ static void notify_waiters(threadpool_t *thpool);
 static void enqueue(jobqueue_t *jobqueue, void *(*function)(void *), void *args);
 static void dequeue(jobqueue_t *jobqueue, job_t *job);
 
+static sigset_t fillset;	
+
 /*
  * threadpool_create - create a thread pool of size threads
  */
 threadpool_t *threadpool_create(size_t num_threads, size_t jobqueue_size) {
 	threadpool_t *thpool;
 	
+	sigfillset(&fillset);
+
 	/* allocate space for thread pool */
 	thpool = (threadpool_t *)malloc(sizeof(threadpool_t));
 
@@ -115,9 +120,11 @@ static void notify_waiters(threadpool_t *thpool) {
  * create_worker - create a worker thread
  */
 static void create_worker(threadpool_t *thpool, thread_t *thread) {
+	pthread_sigmask(SIG_BLOCK, &fillset, NULL);
 	if (pthread_create(&(thread->pthread_handle), NULL, worker_thread, (void *)thpool)) {
 		fprintf(stderr, "create_worker(): Could not create thread\n");
 	}
+	pthread_sigmask(SIG_UNBLOCK, &fillset, NULL);
 }
 
 /*
@@ -172,8 +179,10 @@ static void dequeue(jobqueue_t *jobqueue, job_t *job) {
 	/* if jobqueue is empty, wait */
 	while (jobqueue->nextempty == jobqueue->front) {
 		pthread_cond_wait(&(jobqueue->condvar), &(jobqueue->lock));
-		if (!(jobqueue->thpool->keepalive))
-			exit(0);
+		if (!(jobqueue->thpool->keepalive)) {
+			pthread_mutex_unlock(&(jobqueue->lock));
+			pthread_exit(0);
+		}
 	}
 
 	/* critical section, remove a job */

@@ -5,6 +5,7 @@
 
 #include "helper.h"
 
+
 /*********************************************************
  * Error handling functions
  *********************************************************/
@@ -414,4 +415,19 @@ pid_t Wait(int *status) {
 void Execve(const char *filename, char *const argv[], char *const envp[]) {
 	if (execve(filename, argv, envp) < 0)
 		unix_error("Execve error");
+}
+
+/**********************************************************************
+ * Signal wrappers
+ **********************************************************************/
+handler_t *Signal(int signum, handler_t *handler) {
+	struct sigaction action, old_action;
+
+	action.sa_handler = handler;
+	sigemptyset(&action.sa_mask); 	/* block sigs of type being handled */
+	action.sa_flags = SA_RESTART;	/* restart syscalls if possible */
+
+	if (sigaction(signum, &action, &old_action) < 0)
+		unix_error("Signal error");
+	return (old_action.sa_handler);
 }

@@ -13,11 +13,15 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <sys/mman.h>
+#include <signal.h>
 
 
 /* Misc constants */
 #define MAXLINE 8192	/* Max text line length */
 #define LISTENQ 1024	/* Second argument to listen() */
+
+/* handler type for signal routines */
+typedef void handler_t(int);
 
 /* Persistent state for the robust I/O (Rio) package */
 #define RIO_BUFSIZE 8192
@@ -79,3 +83,6 @@ void Munmap(void *start, size_t length);
 pid_t Fork(void);
 pid_t Wait(int *status);
 void Execve(const char *filename, char *const argv[], char *const envp[]);
+
+/* Signal wrappers */
+handler_t *Signal(int signum, handler_t *handler);

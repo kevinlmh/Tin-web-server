@@ -1,7 +1,7 @@
 /*
- * tinywebserver.c - A simple HTTP/1.0 web server
+ * tin.c - A simple HTTP/1.0 web server
  * 
- * modified from CSAPPP 2nd edition book example tiny.c
+ * modified from CSAPPP 2nd edition book example
  */
 
 #include <stdlib.h>
@@ -37,6 +37,11 @@ void *serve_static(void *pkg);
 void get_filetype(char *filename, char *filetype);
 void serve_dynamic(int fd, char *filename, char *cgiargs);
 void clienterror(int fd, char *cause, char *errnum, char *shortmsg, char *longmsm);
+void sigint_handler(int signum);
+
+/* global data */
+threadpool_t *thpool;			/* threadpool */
+int shutdown_server = 0;		/* shutdown server */
 
 int main(int argc, char **argv) {
 	int listenfd, connfd, port, clientlen;
@@ -49,11 +54,15 @@ int main(int argc, char **argv) {
 	}
 	port = atoi(argv[1]);
 
+	// register signal handler
+	Signal(SIGINT, sigint_handler);
+
 	/* create a thread pool */
-	threadpool_t *thpool = threadpool_create(NUM_THREADS, JOBQUEUE_SIZE);
+	thpool = threadpool_create(NUM_THREADS, JOBQUEUE_SIZE);
+
 
 	listenfd = Open_listenfd(port);
-	while (1) {
+	while (!shutdown_server) {
 		clientlen = sizeof(clientaddr);
 		connfd = Accept(listenfd, (struct sockaddr *)&clientaddr, &clientlen);
 		handle_request(thpool, connfd);
@@ -97,10 +106,6 @@ void handle_request(threadpool_t *thpool, int fd) {
 	
 		/* add job to thread pool */
 		struct pkg p = { fd, sbuf.st_size, filename };
-		// pthread_attr_t attr;
-		// pthread_attr_init(&attr);
-		// pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-		// pthread_attr_destroy(&attr);
 		threadpool_add_work(thpool, serve_static, &p);
 	} else { /* Server dynamic content */
 		if (!(S_ISREG(sbuf.st_mode)) || !(S_IXUSR & sbuf.st_mode)) {
@@ -116,13 +121,6 @@ void clienterror(int fd, char *cause, char *errnum, char *shortmsg, char *longms
 	char buf[MAXLINE], body[MAXBUF];
 
 	/* Build the HTTP response body */
-/*  sprintf(body, "<html><title>Tiny Error</title>");
-	sprintf(body, "%s<body bgcolor=""FFFFFF"">\r\n", body);
-	sprintf(body, "%s%s: %s\r\n", body, errnum, shortmsg);
-	sprintf(body, "%s<p>%s: %s\r\n", body, longmsg, cause);
-	sprintf(body, "%s<hr><em>The Tiny Web server</em>\r\n", body);
-*/
-
 	sprintf(body, "<html><head><title>Tiny Error</title></head> \
 <body bgcolor=""ffffff"">\r\n \
 %s: %s\r\n \
@@ -216,6 +214,9 @@ void get_filetype(char *filename, char *filetype) {
 		strcpy(filetype, "text/plain");
 }
 
+/* 
+ * server_dynamic - run a cgi binary program and redirect output to client 
+ */
 void serve_dynamic(int fd, char *filename, char *cgiargs) {
 	char buf[MAXLINE], *emptylist[] = { NULL };
 
@@ -232,4 +233,15 @@ void serve_dynamic(int fd, char *filename, char *cgiargs) {
 		Execve(filename, emptylist, environ);	/* Run CGI program */
 	}
 	Wait(NULL);		/* Parent waits for and reaps child */
+}
+
+/*
+ * Handle SIGINT when user press CTRL-C and terminate gracefully
+ */
+void sigint_handler(int signum) {
+	// wait for all threads to finish current work and destroy thread pool 
+	threadpool_destroy(thpool);
+	// shutdown_server
+	shutdown_server = 1;
+	exit(0);
 }
