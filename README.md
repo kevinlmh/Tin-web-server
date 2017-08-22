@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/kevinlmh/Tin-web-server.svg?branch=master)](https://travis-ci.org/kevinlmh/Tin-web-server)
+[![Build Status](https://travis-ci.org/minghui-liu/Tin-web-server.svg?branch=master)](https://travis-ci.org/minghui-liu/Tin-web-server)
 
 # A lightweight web server written in C with some goals in mind.
 * Fast and responsive
