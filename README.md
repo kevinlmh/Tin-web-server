@@ -1,6 +1,10 @@
 [![Build Status](https://travis-ci.org/minghui-liu/Tin-web-server.svg?branch=master)](https://travis-ci.org/minghui-liu/Tin-web-server)
 
-# A lightweight web server written in C with some goals in mind.
+# A lightweight web server written in C
+
+Tin is a multi-threaded web server that supports both static and dynamic contents. It has a one-thread-multiple-active-clients architecture implemented using a [thread-pool](https://github.com/minghui-liu/threadpool) and handles large number of concurrent requests.
+
+Tin is implemented with some goals in mind:
 * Fast and responsive
 * Ability to handle large number of concurrent requests
 * Support Python frameworks well
